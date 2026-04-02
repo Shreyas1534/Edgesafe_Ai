@@ -612,7 +612,6 @@
 </head>
 <body>
 
-<!-- ── Splash Screen ── -->
 <div id="splash">
   <div class="hud-corner tl"></div>
   <div class="hud-corner tr"></div>
@@ -663,7 +662,6 @@
   </div>
 </header>
 
-<!-- ── 4-class stat strip ── -->
 <div class="stat-strip">
   <div class="stat-box person" id="statPerson">
     <div class="stat-icon">👤</div>
@@ -696,7 +694,6 @@
 </div>
 
 <main>
-  <!-- Camera feed -->
   <section class="camera-panel">
     <div class="panel-label">Live Detection Feed</div>
 
@@ -726,10 +723,8 @@
     </div>
   </section>
 
-  <!-- Sidebar -->
   <aside class="sidebar">
 
-    <!-- System status -->
     <div class="info-card">
       <div class="card-title">// System Status</div>
       <div class="metric-row">
@@ -757,7 +752,6 @@
         <span class="metric-value safe" id="threatLevel">CLEAR</span>
       </div>
 
-      <!-- Countdown ring -->
       <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between;">
         <div class="timer-ring">
           <svg class="ring-svg" width="28" height="28" viewBox="0 0 28 28">
@@ -770,7 +764,6 @@
       </div>
     </div>
 
-    <!-- Inference Speed -->
     <div class="info-card">
       <div class="card-title">// Inference Speed</div>
       <div class="conf-bar-wrap">
@@ -791,7 +784,6 @@
       </div>
     </div>
 
-    <!-- Live detections -->
     <div class="info-card" style="flex:0 0 auto;">
       <div class="card-title">// Current Detections</div>
       <div id="detectionCards" style="display:flex;flex-direction:column;gap:6px;min-height:36px;">
@@ -799,7 +791,6 @@
       </div>
     </div>
 
-    <!-- Detection log -->
     <div class="info-card" style="flex:1;">
       <div class="card-title">// Detection Log</div>
       <div class="log-container" id="logContainer">
@@ -855,7 +846,8 @@ setTimeout(() => {
 }, 3600);
 
 // ── Config ──────────────────────────────────────────────────
-const BACKEND_URL  = 'http://localhost:5000/detect';
+// 🔥 FIX: Absolute URL explicitly tells the browser where the backend lives on the internet
+const BACKEND_URL  = 'https://edgesafeai-production.up.railway.app/detect';
 const INTERVAL_MS  = 3000;
 const CANVAS_W     = 640;
 const CANVAS_H     = 480;

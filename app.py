@@ -12,7 +12,13 @@ import os
 app = Flask(__name__)
 
 # ✅ FIX: Explicitly allow the dashboard to send images to this backend
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Origin"]
+    }
+})
 
 # Use 'gevent' for WebSocket production support
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
@@ -25,8 +31,13 @@ model.to('cpu')
 def index():
     return render_template("index.html")
 
-@app.route("/detect", methods=["POST"])
+# ✅ FIX: Added "OPTIONS" to handle browser pre-flight security checks
+@app.route("/detect", methods=["POST", "OPTIONS"])
 def detect():
+    # Handle the CORS pre-flight check automatically
+    if request.method == "OPTIONS":
+        return jsonify({"status": "CORS OK"}), 200
+
     # ✅ LOGGING: This will show up in your Railway 'View Logs' tab
     print(">>> Image received for detection...")
 
@@ -102,7 +113,7 @@ def detect():
         "speed": speed,
         "total_objects": len(detections)
     }
-
+    
     # Broadcast to all connected Flutter apps
     socketio.emit('live_detections', payload)
 
