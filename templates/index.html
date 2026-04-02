@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EdgeSafe AI — Intelligence at the Edge</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-deep:       #020d1a;
+      --bg-mid:        #041424;
+      --bg-panel:      #051d30;
+      --cyan:          #00e5ff;
+      --cyan-dim:      #0097b2;
+      --cyan-glow:     rgba(0,229,255,0.18);
+      --cyan-glow-lg:  rgba(0,229,255,0.08);
+      --blue-bright:   #1565ff;
+      --blue-mid:      #0d4aad;
+      --text-primary:  #c8f4ff;
+      --text-dim:      #4a8fa8;
+      --border:        rgba(0,229,255,0.15);
+      --danger:        #ff3d57;
+      --warn:          #ffcc00;
+      --safe:          #00ff99;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Exo 2', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background grid ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(0,80,160,0.18) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 36px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(2,13,26,0.85);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 14px;
+    }
+
+    .shield-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 18px var(--cyan-glow), 0 0 40px rgba(0,229,255,0.1);
+      animation: shieldPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes shieldPulse {
+      0%,100% { box-shadow: 0 0 18px var(--cyan-glow), 0 0 40px rgba(0,229,255,0.1); }
+      50%      { box-shadow: 0 0 30px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.18); }
+    }
+
+    .shield-icon svg { width: 22px; height: 22px; fill: #fff; }
+
+    .logo-text {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 22px; font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--cyan);
+      text-shadow: 0 0 20px rgba(0,229,255,0.5);
+    }
+
+    .logo-sub {
+      font-size: 10px; letter-spacing: 2px;
+      color: var(--text-dim); margin-top: 1px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .header-status {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px; color: var(--text-dim);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--safe);
+      box-shadow: 0 0 8px var(--safe);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    /* ── Main layout ── */
+    main {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+      padding: 24px 36px;
+      min-height: calc(100vh - 74px);
+    }
+
+    /* ── Camera panel ── */
+    .camera-panel {
+      grid-row: 1 / 3;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .panel-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; letter-spacing: 3px;
+      color: var(--cyan-dim);
+      text-transform: uppercase;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .panel-label::before {
+      content: ''; display: inline-block;
+      width: 20px; height: 1px; background: var(--cyan-dim);
+    }
+
+    .camera-frame {
+      position: relative;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      box-shadow: 0 0 0 1px rgba(0,229,255,0.05), 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    /* Corner decorators */
+    .camera-frame::before,
+    .camera-frame::after {
+      content: ''; position: absolute;
+      width: 24px; height: 24px; z-index: 10;
+    }
+    .camera-frame::before {
+      top: 0; left: 0;
+      border-top: 2px solid var(--cyan);
+      border-left: 2px solid var(--cyan);
+    }
+    .camera-frame::after {
+      bottom: 0; right: 0;
+      border-bottom: 2px solid var(--cyan);
+      border-right: 2px solid var(--cyan);
+    }
+
+    .corner-tr, .corner-bl {
+      position: absolute; width: 24px; height: 24px; z-index: 10;
+    }
+    .corner-tr { top: 0; right: 0; border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+    .corner-bl { bottom: 0; left: 0; border-bottom: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+
+    /* Scan line */
+    .scan-line {
+      position: absolute; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 12px var(--cyan);
+      z-index: 8;
+      animation: scanDown 3s linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes scanDown {
+      0%   { top: 0%; opacity: 0; }
+      5%   { opacity: 0.6; }
+      95%  { opacity: 0.6; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    #video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #canvas { display: none; }
+
+    .overlay-info {
+      position: absolute; top: 12px; left: 12px; z-index: 9;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; color: var(--cyan);
+      display: flex; flex-direction: column; gap: 3px;
+    }
+
+    .overlay-badge {
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.25);
+      padding: 2px 8px; border-radius: 2px;
+      width: fit-content;
+    }
+
+    .cam-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; background: #020d1a;
+    }
+
+    .cam-placeholder svg { width: 48px; height: 48px; opacity: 0.3; fill: var(--cyan); }
+    .cam-placeholder p { font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex; gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px; font-weight: 600;
+      letter-spacing: 2px;
+      padding: 12px 20px;
+      border-radius: 3px;
+      border: 1px solid;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue-bright), var(--blue-mid));
+      border-color: var(--cyan-dim);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(21,101,255,0.3);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 30px rgba(0,229,255,0.3), 0 0 60px rgba(0,229,255,0.1);
+      border-color: var(--cyan);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+    .btn-outline:hover { border-color: var(--cyan-dim); color: var(--cyan); }
+
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Right sidebar ── */
+    .sidebar {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .info-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .info-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
+    }
+
+    .card-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; letter-spacing: 3px;
+      color: var(--cyan-dim);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* ── Status metric ── */
+    .metric-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0,229,255,0.06);
+      font-size: 12px;
+    }
+    .metric-row:last-child { border-bottom: none; }
+
+    .metric-label { color: var(--text-dim); letter-spacing: 1px; }
+    .metric-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--cyan);
+    }
+    .metric-value.safe  { color: var(--safe); }
+    .metric-value.warn  { color: var(--warn); }
+    .metric-value.danger{ color: var(--danger); }
+
+    /* ── Detection log ── */
+    .log-container {
+      flex: 1;
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+
+    .log-container::-webkit-scrollbar { width: 4px; }
+    .log-container::-webkit-scrollbar-track { background: transparent; }
+    .log-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .log-entry {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 8px 10px;
+      border-radius: 2px;
+      border-left: 2px solid;
+      background: rgba(0,229,255,0.04);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+    .log-entry.safe   { border-color: var(--safe);   color: var(--safe); }
+    .log-entry.warn   { border-color: var(--warn);   color: var(--warn); }
+    .log-entry.danger { border-color: var(--danger); color: var(--danger); }
+    .log-entry.info   { border-color: var(--cyan-dim); color: var(--text-dim); }
+
+    .log-time { opacity: 0.5; margin-right: 8px; }
+
+    /* ── Progress / confidence bar ── */
+    .conf-bar-wrap {
+      margin-top: 10px;
+    }
+
+    .conf-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-dim); margin-bottom: 6px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .conf-bar {
+      height: 4px; background: rgba(0,229,255,0.1); border-radius: 2px; overflow: hidden;
+    }
+
+    .conf-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue-bright), var(--cyan));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    /* ── Detection boxes overlay (drawn on video) ── */
+    #overlay-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; z-index: 7;
+    }
+
+    /* ── Interval indicator ── */
+    .timer-ring {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; color: var(--text-dim);
+    }
+
+    .ring-svg { transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: rgba(0,229,255,0.1); stroke-width: 3; }
+    .ring-fill {
+      fill: none; stroke: var(--cyan); stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 75.4;
+      stroke-dashoffset: 75.4;
+      transition: stroke-dashoffset 0.2s linear;
+    }
+
+    /* ── Class stat strip ── */
+    .stat-strip {
+      position: relative; z-index: 5;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; padding: 0 36px 0;
+      margin-bottom: -8px;
+    }
+    .stat-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .stat-box::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-box.person::before { background: var(--cyan); }
+    .stat-box.knife::before  { background: var(--danger); }
+    .stat-box.weapon::before { background: #ff8c00; }
+    .stat-box.fire::before   { background: #ff4500; }
+
+    .stat-box.active { box-shadow: 0 0 20px rgba(255,61,87,0.25); border-color: rgba(255,61,87,0.4); }
+    .stat-box.active.person { box-shadow: 0 0 20px rgba(0,229,255,0.2); border-color: rgba(0,229,255,0.35); }
+
+    .stat-icon {
+      font-size: 22px; line-height: 1;
+      width: 36px; text-align: center;
+    }
+    .stat-info { display: flex; flex-direction: column; }
+    .stat-count {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 26px; font-weight: 700; line-height: 1;
+      color: var(--text-primary);
+    }
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px; letter-spacing: 2px;
+      color: var(--text-dim); text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .stat-box.person .stat-count { color: var(--cyan); }
+    .stat-box.knife  .stat-count { color: var(--danger); }
+    .stat-box.weapon .stat-count { color: #ff8c00; }
+    .stat-box.fire   .stat-count { color: #ff4500; }
+
+    @media (max-width: 900px) { .stat-strip { grid-template-columns: repeat(2,1fr); padding: 0 16px; } }
+
+    /* ── Splash screen ── */
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #020d1a;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0;
+      transition: opacity 0.7s ease, visibility 0.7s ease;
+    }
+    #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    /* Grid bg same as main site */
+    #splash::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridReveal 1.2s ease forwards;
+      opacity: 0;
+    }
+    @keyframes gridReveal { to { opacity: 1; } }
+
+    /* Radar ring sweeper */
+    .splash-radar {
+      position: relative;
+      width: 220px; height: 220px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .radar-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(0,229,255,0.2);
+      animation: radarExpand 2.4s ease-out infinite;
+    }
+    .radar-ring:nth-child(1) { width: 80px;  height: 80px;  animation-delay: 0s; }
+    .radar-ring:nth-child(2) { width: 130px; height: 130px; animation-delay: 0.4s; }
+    .radar-ring:nth-child(3) { width: 180px; height: 180px; animation-delay: 0.8s; }
+    .radar-ring:nth-child(4) { width: 220px; height: 220px; animation-delay: 1.2s; }
+
+    @keyframes radarExpand {
+      0%   { opacity: 0.8; transform: scale(0.7); }
+      100% { opacity: 0;   transform: scale(1.1); }
+    }
+
+    /* Rotating sweep beam */
+    .radar-sweep {
+      position: absolute;
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(0,229,255,0.4) 0deg, rgba(0,229,255,0) 60deg, transparent 60deg);
+      animation: sweep 2s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes sweep { to { transform: rotate(360deg); } }
+
+    /* Shield icon in center */
+    .splash-shield {
+      position: relative; z-index: 2;
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #1565ff, #00e5ff);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 30px rgba(0,229,255,0.5), 0 0 80px rgba(0,229,255,0.15);
+      animation: shieldBeat 1.5s ease-in-out infinite, shieldAppear 0.6s ease forwards;
+      opacity: 0;
+    }
+    @keyframes shieldAppear {
+      0%   { opacity: 0; transform: scale(0.5); }
+      70%  { transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes shieldBeat {
+      0%,100% { box-shadow: 0 0 30px rgba(0,229,255,0.5), 0 0 80px rgba(0,229,255,0.15); }
+      50%      { box-shadow: 0 0 50px rgba(0,229,255,0.8), 0 0 120px rgba(0,229,255,0.3); }
+    }
+    .splash-shield svg { width: 36px; height: 36px; fill: #fff; }
+
+    /* Brand text */
+    .splash-brand {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      overflow: hidden;
+    }
+    .splash-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 52px; font-weight: 700;
+      letter-spacing: 10px;
+      color: var(--cyan);
+      text-shadow: 0 0 40px rgba(0,229,255,0.6), 0 0 80px rgba(0,229,255,0.2);
+      opacity: 0;
+      animation: titleReveal 0.8s ease 0.5s forwards;
+      text-transform: uppercase;
+    }
+    @keyframes titleReveal {
+      0%   { opacity: 0; transform: translateY(20px) scaleX(0.85); letter-spacing: 4px; }
+      100% { opacity: 1; transform: translateY(0)   scaleX(1);    letter-spacing: 10px; }
+    }
+    .splash-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px; letter-spacing: 4px;
+      color: var(--text-dim);
+      opacity: 0;
+      animation: fadeUp 0.6s ease 1s forwards;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Loading bar */
+    .splash-bar-wrap {
+      margin-top: 48px;
+      width: 260px;
+      opacity: 0;
+      animation: fadeUp 0.4s ease 1.2s forwards;
+    }
+    .splash-bar-track {
+      height: 2px;
+      background: rgba(0,229,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .splash-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #1565ff, #00e5ff);
+      border-radius: 2px;
+      box-shadow: 0 0 12px rgba(0,229,255,0.8);
+      animation: barFill 2s ease 1.4s forwards;
+    }
+    @keyframes barFill { to { width: 100%; } }
+
+    .splash-loading-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-top: 10px;
+      text-align: center;
+      animation: loadingBlink 0.8s ease infinite alternate;
+    }
+    @keyframes loadingBlink { from { opacity: 0.4; } to { opacity: 1; } }
+
+    /* Scan lines overlay on splash */
+    #splash::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* Corner HUD brackets on splash */
+    .hud-corner {
+      position: absolute;
+      width: 40px; height: 40px;
+      opacity: 0;
+      animation: fadeUp 0.4s ease 0.3s forwards;
+    }
+    .hud-corner.tl { top: 24px; left: 24px; border-top: 2px solid rgba(0,229,255,0.4); border-left: 2px solid rgba(0,229,255,0.4); }
+    .hud-corner.tr { top: 24px; right: 24px; border-top: 2px solid rgba(0,229,255,0.4); border-right: 2px solid rgba(0,229,255,0.4); }
+    .hud-corner.bl { bottom: 24px; left: 24px; border-bottom: 2px solid rgba(0,229,255,0.4); border-left: 2px solid rgba(0,229,255,0.4); }
+    .hud-corner.br { bottom: 24px; right: 24px; border-bottom: 2px solid rgba(0,229,255,0.4); border-right: 2px solid rgba(0,229,255,0.4); }
+  </style>
+</head>
+<body>
+
+<!-- ── Splash Screen ── -->
+<div id="splash">
+  <div class="hud-corner tl"></div>
+  <div class="hud-corner tr"></div>
+  <div class="hud-corner bl"></div>
+  <div class="hud-corner br"></div>
+
+  <div class="splash-radar">
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-sweep"></div>
+    <div class="splash-shield">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4h7v5.22c0 3.89-2.67 7.56-7 8.62V5z"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="splash-brand">
+    <div class="splash-title">EDGESAFE AI</div>
+    <div class="splash-sub">INTELLIGENCE AT THE EDGE · SAFETY IN REAL-TIME</div>
+  </div>
+
+  <div class="splash-bar-wrap">
+    <div class="splash-bar-track">
+      <div class="splash-bar-fill"></div>
+    </div>
+    <div class="splash-loading-text" id="splashLoadingText">INITIALIZING SYSTEMS</div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="shield-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4h7v5.22c0 3.89-2.67 7.56-7 8.62V5z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">EDGESAFE AI</div>
+      <div class="logo-sub">Intelligence at the Edge. Safety in Real-Time.</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">INITIALIZING</span>
+  </div>
+</header>
+
+<!-- ── 4-class stat strip ── -->
+<div class="stat-strip">
+  <div class="stat-box person" id="statPerson">
+    <div class="stat-icon">👤</div>
+    <div class="stat-info">
+      <div class="stat-count" id="countPersons">0</div>
+      <div class="stat-label">Persons</div>
+    </div>
+  </div>
+  <div class="stat-box knife" id="statKnife">
+    <div class="stat-icon">🔪</div>
+    <div class="stat-info">
+      <div class="stat-count" id="countKnives">0</div>
+      <div class="stat-label">Knives</div>
+    </div>
+  </div>
+  <div class="stat-box weapon" id="statWeapon">
+    <div class="stat-icon">🔫</div>
+    <div class="stat-info">
+      <div class="stat-count" id="countWeapons">0</div>
+      <div class="stat-label">Weapons</div>
+    </div>
+  </div>
+  <div class="stat-box fire" id="statFire">
+    <div class="stat-icon">🔥</div>
+    <div class="stat-info">
+      <div class="stat-count" id="countFire">0</div>
+      <div class="stat-label">Fire</div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- Camera feed -->
+  <section class="camera-panel">
+    <div class="panel-label">Live Detection Feed</div>
+
+    <div class="camera-frame" id="cameraFrame">
+      <div class="corner-tr"></div>
+      <div class="corner-bl"></div>
+      <div class="scan-line" id="scanLine"></div>
+
+      <div class="cam-placeholder" id="placeholder">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <p>CAMERA OFFLINE</p>
+      </div>
+
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <canvas id="overlay-canvas"></canvas>
+
+      <div class="overlay-info">
+        <span class="overlay-badge" id="fpsTag">FPS: --</span>
+        <span class="overlay-badge" id="resTag">RES: --</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="startBtn" onclick="startCamera()">▶ START CAMERA</button>
+      <button class="btn btn-outline"  id="stopBtn"  onclick="stopCamera()" disabled>■ STOP</button>
+    </div>
+  </section>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- System status -->
+    <div class="info-card">
+      <div class="card-title">// System Status</div>
+      <div class="metric-row">
+        <span class="metric-label">PIPELINE</span>
+        <span class="metric-value" id="pipelineStatus">OFFLINE</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">INTERVAL</span>
+        <span class="metric-value" id="intervalVal">3.0 s</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">FRAMES SENT</span>
+        <span class="metric-value" id="frameCount">0</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">LAST PING</span>
+        <span class="metric-value" id="lastPing">—</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">OBJECTS NOW</span>
+        <span class="metric-value" id="totalObjects">0</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">THREAT LEVEL</span>
+        <span class="metric-value safe" id="threatLevel">CLEAR</span>
+      </div>
+
+      <!-- Countdown ring -->
+      <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between;">
+        <div class="timer-ring">
+          <svg class="ring-svg" width="28" height="28" viewBox="0 0 28 28">
+            <circle class="ring-bg" cx="14" cy="14" r="12"/>
+            <circle class="ring-fill" id="ringFill" cx="14" cy="14" r="12"/>
+          </svg>
+          <span>NEXT FRAME</span>
+        </div>
+        <span class="metric-value" id="countdownDisplay">—</span>
+      </div>
+    </div>
+
+    <!-- Inference Speed -->
+    <div class="info-card">
+      <div class="card-title">// Inference Speed</div>
+      <div class="conf-bar-wrap">
+        <div class="conf-label"><span>PREPROCESS</span><span id="speedPre">—</span></div>
+        <div class="conf-bar"><div class="conf-fill" id="speedPreBar" style="width:0%; background:linear-gradient(90deg,#1565ff,#00e5ff);"></div></div>
+      </div>
+      <div class="conf-bar-wrap" style="margin-top:10px;">
+        <div class="conf-label"><span>INFERENCE</span><span id="speedInf">—</span></div>
+        <div class="conf-bar"><div class="conf-fill" id="speedInfBar" style="width:0%; background:linear-gradient(90deg,#ff3d57,#ffcc00);"></div></div>
+      </div>
+      <div class="conf-bar-wrap" style="margin-top:10px;">
+        <div class="conf-label"><span>POSTPROCESS</span><span id="speedPost">—</span></div>
+        <div class="conf-bar"><div class="conf-fill" id="speedPostBar" style="width:0%; background:linear-gradient(90deg,#1565ff,#00ff99);"></div></div>
+      </div>
+      <div style="margin-top:12px;" class="metric-row">
+        <span class="metric-label">TOTAL MS</span>
+        <span class="metric-value" id="speedTotal">—</span>
+      </div>
+    </div>
+
+    <!-- Live detections -->
+    <div class="info-card" style="flex:0 0 auto;">
+      <div class="card-title">// Current Detections</div>
+      <div id="detectionCards" style="display:flex;flex-direction:column;gap:6px;min-height:36px;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);">No detections yet.</div>
+      </div>
+    </div>
+
+    <!-- Detection log -->
+    <div class="info-card" style="flex:1;">
+      <div class="card-title">// Detection Log</div>
+      <div class="log-container" id="logContainer">
+        <div class="log-entry info"><span class="log-time">--:--:--</span>System ready. Start camera to begin.</div>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<style>
+  .det-card {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 10px; border-radius:3px; border-left:3px solid;
+    font-family:'Share Tech Mono',monospace; font-size:11px;
+    background:rgba(0,229,255,0.04);
+    animation: fadeIn 0.25s ease;
+  }
+  .det-card.person { border-color:#00e5ff; color:#00e5ff; }
+  .det-card.knife  { border-color:#ff3d57; color:#ff3d57; background:rgba(255,61,87,0.06); }
+  .det-card.clear  { border-color:#00ff99; color:#00ff99; }
+  .det-badge {
+    font-size:10px; padding:2px 6px;
+    border-radius:2px; background:rgba(0,0,0,0.3);
+    border:1px solid currentColor; opacity:0.8;
+  }
+</style>
+
+<script>
+// ── Splash screen ─────────────────────────────────────────────
+const splashMessages = [
+  'INITIALIZING SYSTEMS',
+  'LOADING NEURAL PIPELINE',
+  'ARMING DETECTION ENGINE',
+  'CALIBRATING SENSORS',
+  'SYSTEM READY'
+];
+let splashMsgIdx = 0;
+const splashText = document.getElementById('splashLoadingText');
+
+const splashMsgInterval = setInterval(() => {
+  splashMsgIdx++;
+  if (splashMsgIdx < splashMessages.length) {
+    splashText.textContent = splashMessages[splashMsgIdx];
+  } else {
+    clearInterval(splashMsgInterval);
+  }
+}, 600);
+
+// Dismiss splash after animation completes (~3.6s)
+setTimeout(() => {
+  document.getElementById('splash').classList.add('hidden');
+}, 3600);
+
+// ── Config ──────────────────────────────────────────────────
+const BACKEND_URL  = 'http://localhost:5000/detect';
+const INTERVAL_MS  = 3000;
+const CANVAS_W     = 640;
+const CANVAS_H     = 480;
+
+// ── State ────────────────────────────────────────────────────
+let stream        = null;
+let sendInterval  = null;
+let framesSent    = 0;
+let countdownTick = null;
+let countdownLeft = INTERVAL_MS / 1000;
+const CIRCUMFERENCE = 2 * Math.PI * 12;
+
+// ── DOM refs ─────────────────────────────────────────────────
+const video       = document.getElementById('video');
+const canvas      = document.getElementById('canvas');
+const overlayC    = document.getElementById('overlay-canvas');
+const ctx         = canvas.getContext('2d');
+const octx        = overlayC.getContext('2d');
+const placeholder = document.getElementById('placeholder');
+const startBtn    = document.getElementById('startBtn');
+const stopBtn     = document.getElementById('stopBtn');
+const ringFill    = document.getElementById('ringFill');
+
+canvas.width  = CANVAS_W;
+canvas.height = CANVAS_H;
+
+// ── Helpers ──────────────────────────────────────────────────
+function nowStr() {
+  return new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+function addLog(msg, type = 'info') {
+  const log   = document.getElementById('logContainer');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<span class="log-time">${nowStr()}</span>${msg}`;
+  log.prepend(entry);
+  while (log.children.length > 80) log.removeChild(log.lastChild);
+}
+
+function setStatus(text, online = false) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.style.background = online ? 'var(--safe)' : 'var(--warn)';
+  dot.style.boxShadow  = online ? '0 0 8px var(--safe)' : '0 0 8px var(--warn)';
+}
+
+function setThreat(level) {
+  const el  = document.getElementById('threatLevel');
+  const map = { CLEAR:'safe', WARNING:'warn', DANGER:'danger' };
+  el.textContent = level;
+  el.className   = `metric-value ${map[level] || 'safe'}`;
+}
+
+function updateRing(offset) {
+  ringFill.style.strokeDashoffset = offset;
+}
+
+function startCountdown() {
+  countdownLeft = INTERVAL_MS / 1000;
+  if (countdownTick) clearInterval(countdownTick);
+  countdownTick = setInterval(() => {
+    countdownLeft = Math.max(0, countdownLeft - 0.1);
+    document.getElementById('countdownDisplay').textContent = countdownLeft.toFixed(1) + 's';
+    const progress = 1 - (countdownLeft / (INTERVAL_MS / 1000));
+    updateRing(CIRCUMFERENCE * (1 - progress));
+    if (countdownLeft <= 0) { countdownLeft = INTERVAL_MS / 1000; }
+  }, 100);
+}
+
+// ── Inference speed display ──────────────────────────────────
+function showSpeed(pre, inf, post) {
+  const total = pre + inf + post;
+  document.getElementById('speedPre').textContent  = pre.toFixed(1)  + ' ms';
+  document.getElementById('speedInf').textContent  = inf.toFixed(1)  + ' ms';
+  document.getElementById('speedPost').textContent = post.toFixed(1) + ' ms';
+  document.getElementById('speedTotal').textContent = total.toFixed(1) + ' ms';
+  // Bars: cap at 300ms = 100%
+  const cap = 300;
+  document.getElementById('speedPreBar').style.width  = Math.min(100, pre  / cap * 100) + '%';
+  document.getElementById('speedInfBar').style.width  = Math.min(100, inf  / cap * 100) + '%';
+  document.getElementById('speedPostBar').style.width = Math.min(100, post / cap * 100) + '%';
+}
+
+// ── Class metadata ───────────────────────────────────────────
+function classInfo(label) {
+  const ll = label.toLowerCase();
+  if (ll.includes('knife'))                             return { cls:'knife',  icon:'🔪', color:'#ff3d57' };
+  if (ll.includes('weapon') || ll.includes('gun'))     return { cls:'knife',  icon:'🔫', color:'#ff8c00' };
+  if (ll.includes('fire')   || ll.includes('flame'))   return { cls:'fire',   icon:'🔥', color:'#ff4500' };
+  if (ll.includes('person') || ll.includes('people'))  return { cls:'person', icon:'👤', color:'#00e5ff' };
+  return { cls:'person', icon:'◈', color:'#00e5ff' };
+}
+
+// ── Detection cards panel ────────────────────────────────────
+function renderDetectionCards(detections) {
+  const container = document.getElementById('detectionCards');
+  container.innerHTML = '';
+
+  if (!detections || detections.length === 0) {
+    container.innerHTML = '<div class="det-card clear"><span>✓ Scene Clear</span><span class="det-badge">0 objects</span></div>';
+    return;
+  }
+
+  const groups = {};
+  detections.forEach(d => {
+    const key = d.label || 'Unknown';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(d);
+  });
+
+  Object.entries(groups).forEach(([label, items]) => {
+    const info    = classInfo(label);
+    const card    = document.createElement('div');
+    card.className = `det-card ${info.cls}`;
+    card.style.borderColor = info.color;
+    card.style.color       = info.color;
+    if (info.cls !== 'person') card.style.background = info.color + '10';
+
+    const avgConf = items.reduce((s, d) => s + (d.confidence || 0), 0) / items.length;
+    card.innerHTML = `
+      <span>${info.icon} ${items.length}× ${label}</span>
+      <span class="det-badge">${(avgConf * 100).toFixed(0)}% conf</span>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── Update 4-class stat strip ────────────────────────────────
+function updateStatStrip(cc) {
+  const p = cc.persons || 0;
+  const k = cc.knives  || 0;
+  const w = cc.weapons || 0;
+  const f = cc.fire    || 0;
+
+  document.getElementById('countPersons').textContent = p;
+  document.getElementById('countKnives').textContent  = k;
+  document.getElementById('countWeapons').textContent = w;
+  document.getElementById('countFire').textContent    = f;
+
+  document.getElementById('statPerson').classList.toggle('active', p > 0);
+  document.getElementById('statKnife').classList.toggle('active',  k > 0);
+  document.getElementById('statWeapon').classList.toggle('active', w > 0);
+  document.getElementById('statFire').classList.toggle('active',   f > 0);
+}
+
+// ── Draw bounding boxes ──────────────────────────────────────
+function drawDetections(detections) {
+  const w = overlayC.width, h = overlayC.height;
+  octx.clearRect(0, 0, w, h);
+  if (!detections || !detections.length) return;
+
+  detections.forEach(det => {
+    const bbox  = det.bbox || det.box;
+    const label = det.label || 'Object';
+    const conf  = det.confidence || 0;
+    const info  = classInfo(label);
+    const color = info.color;
+
+    if (bbox) {
+      const [x, y, bw, bh] = bbox;
+      octx.strokeStyle = color;
+      octx.lineWidth   = 2;
+      octx.shadowColor = color;
+      octx.shadowBlur  = 12;
+      octx.strokeRect(x, y, bw, bh);
+
+      octx.font = 'bold 12px "Share Tech Mono", monospace';
+      const txt  = `${info.icon} ${label} ${(conf * 100).toFixed(0)}%`;
+      const tw   = octx.measureText(txt).width + 12;
+      octx.fillStyle  = color + 'dd';
+      octx.shadowBlur = 0;
+      octx.fillRect(x, y - 22, tw, 22);
+      octx.fillStyle = '#000';
+      octx.fillText(txt, x + 6, y - 6);
+    }
+  });
+}
+
+// ── Process backend JSON response ────────────────────────────
+function processResponse(data, ping) {
+  document.getElementById('lastPing').textContent = ping + ' ms';
+
+  // ── Detections array ──
+  // Backend sends: { detections:[{label,confidence,bbox:[x,y,w,h]},...], speed:{...}, summary, threat_level }
+  const detections = data.detections || data.results || [];
+
+  // If backend returned old plain-list format [{class,confidence,bbox},...] handle gracefully
+  const normalized = detections.map(d => ({
+    label:      d.label || d.class_name || String(d.class ?? 'Object'),
+    confidence: d.confidence || d.score  || 0,
+    bbox:       d.bbox || d.box || null
+  }));
+
+  drawDetections(normalized);
+  renderDetectionCards(normalized);
+
+  // ── Class counts → stat strip ──
+  if (data.class_counts) {
+    updateStatStrip(data.class_counts);
+  } else {
+    // Derive from detections if backend didn't send class_counts
+    const cc = { persons:0, knives:0, weapons:0, fire:0 };
+    normalized.forEach(d => {
+      const ll = d.label.toLowerCase();
+      if (ll.includes('person') || ll.includes('people')) cc.persons++;
+      if (ll.includes('knife'))                           cc.knives++;
+      if (ll.includes('weapon') || ll.includes('gun'))   cc.weapons++;
+      if (ll.includes('fire')   || ll.includes('flame')) cc.fire++;
+    });
+    updateStatStrip(cc);
+  }
+
+  // ── Total object count ──
+  const total = data.total_objects ?? normalized.length;
+  document.getElementById('totalObjects').textContent = total;
+
+  // ── Inference speed ──
+  if (data.speed) {
+    showSpeed(
+      data.speed.preprocess  || data.speed.pre  || 0,
+      data.speed.inference   || data.speed.inf  || 0,
+      data.speed.postprocess || data.speed.post || 0
+    );
+  }
+
+  // ── Threat level ──
+  const hasKnife  = normalized.some(d => d.label.toLowerCase().includes('knife') || d.label.toLowerCase().includes('weapon') || d.label.toLowerCase().includes('gun'));
+  const hasPerson = normalized.some(d => d.label.toLowerCase().includes('person'));
+  const threat    = data.threat_level || (hasKnife ? 'DANGER' : hasPerson ? 'WARNING' : 'CLEAR');
+  setThreat(threat);
+
+  // ── Terminal-style summary log line ──
+  // Mirrors exactly what YOLO prints: "0: 480x640 1 Knife, 2 persons, 103.7ms"
+  const summary  = data.summary || (normalized.length === 0 ? 'no detections' : normalized.map(d => d.label).join(', '));
+  const infMs    = data.speed ? data.speed.inference.toFixed(1) + 'ms' : '';
+  const termLine = `0: 480×640 ${summary}${infMs ? ', ' + infMs : ''}`;
+  const logType  = hasKnife ? 'danger' : hasPerson ? 'warn' : 'safe';
+
+  addLog(termLine, logType);
+
+  // ── Per-detection breakdown ──
+  normalized.forEach(d => {
+    const conf    = (d.confidence * 100).toFixed(1);
+    const isKnife = d.label.toLowerCase().includes('knife') || d.label.toLowerCase().includes('weapon');
+    addLog(`  └─ ${d.label}  conf: ${conf}%`, isKnife ? 'danger' : 'info');
+  });
+
+  // ── Speed log line ──
+  if (data.speed) {
+    const s = data.speed;
+    addLog(`  ⚡ pre:${s.preprocess}ms  inf:${s.inference}ms  post:${s.postprocess}ms`, 'info');
+  }
+
+  // ── Status ──
+  document.getElementById('pipelineStatus').textContent = 'ONLINE';
+  document.getElementById('pipelineStatus').className   = 'metric-value safe';
+  setStatus('LIVE · DETECTING', true);
+  document.getElementById('fpsTag').textContent = `PING: ${ping}ms`;
+}
+
+// ── Frame sender ─────────────────────────────────────────────
+async function sendFrame() {
+  if (!stream) return;
+
+  ctx.drawImage(video, 0, 0, CANVAS_W, CANVAS_H);
+
+  canvas.toBlob(async (blob) => {
+    framesSent++;
+    document.getElementById('frameCount').textContent = framesSent;
+    startCountdown();
+
+    const form = new FormData();
+    form.append('image', blob, 'frame.jpg');
+
+    const t0 = Date.now();
+    try {
+      const res  = await fetch(BACKEND_URL, { method: 'POST', body: form });
+      const ping = Date.now() - t0;
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      processResponse(data, ping);
+
+    } catch (err) {
+      addLog(`[FRAME #${framesSent}] Send error: ${err.message}`, 'danger');
+      document.getElementById('pipelineStatus').textContent = 'ERROR';
+      document.getElementById('pipelineStatus').className   = 'metric-value danger';
+      setStatus('BACKEND UNREACHABLE');
+    }
+  }, 'image/jpeg', 0.85);
+}
+
+// ── Camera start / stop ──────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: CANVAS_W, height: CANVAS_H, facingMode: 'environment' },
+      audio: false
+    });
+
+    video.srcObject = stream;
+    await video.play();
+
+    video.addEventListener('loadedmetadata', () => {
+      overlayC.width  = video.videoWidth  || CANVAS_W;
+      overlayC.height = video.videoHeight || CANVAS_H;
+    });
+
+    placeholder.style.display = 'none';
+    startBtn.disabled = true;
+    stopBtn.disabled  = false;
+
+    document.getElementById('resTag').textContent       = `RES: ${CANVAS_W}×${CANVAS_H}`;
+    document.getElementById('intervalVal').textContent  = (INTERVAL_MS / 1000).toFixed(1) + ' s';
+
+    setStatus('LIVE · ARMED', true);
+    addLog('Camera started. Sending frames every 3s to backend pipeline.', 'safe');
+
+    sendFrame();
+    sendInterval = setInterval(sendFrame, INTERVAL_MS);
+
+  } catch (err) {
+    addLog(`Camera error: ${err.message}`, 'danger');
+    setStatus('CAMERA ERROR');
+  }
+}
+
+function stopCamera() {
+  if (stream)        { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (sendInterval)  { clearInterval(sendInterval);  sendInterval  = null; }
+  if (countdownTick) { clearInterval(countdownTick); countdownTick = null; }
+
+  video.srcObject = null;
+  octx.clearRect(0, 0, overlayC.width, overlayC.height);
+  placeholder.style.display = 'flex';
+  startBtn.disabled = false;
+  stopBtn.disabled  = true;
+
+  updateStatStrip({ persons:0, knives:0, weapons:0, fire:0 });
+  document.getElementById('fpsTag').textContent         = 'FPS: --';
+  document.getElementById('resTag').textContent         = 'RES: --';
+  document.getElementById('totalObjects').textContent   = '0';
+  document.getElementById('pipelineStatus').textContent = 'OFFLINE';
+  document.getElementById('pipelineStatus').className   = 'metric-value';
+  document.getElementById('countdownDisplay').textContent = '—';
+  document.getElementById('detectionCards').innerHTML   =
+    '<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--text-dim);">No detections yet.</div>';
+  updateRing(CIRCUMFERENCE);
+  setStatus('STANDBY');
+  addLog('Camera stopped.', 'info');
+}
+</script>
+</body>
+</html>

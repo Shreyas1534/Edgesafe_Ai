@@ -1,0 +1,8 @@
+flask
+flask-cors
+flask-socketio
+ultralytics
+opencv-python-headless
+numpy
+gunicorn
+eventlet
