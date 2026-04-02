@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()  # 🔥 CRITICAL: Must be the very first thing in the file
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -9,11 +12,10 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# Use 'eventlet' or 'gevent' as the async_mode for production
+# Initialize WebSockets with eventlet for real-time streaming
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# Load model once globally
-# Note: On Railway, ensure webapp.pt is in the root directory
+# Load model globally
 model = YOLO("webapp.pt")
 
 @app.route("/")
@@ -46,6 +48,7 @@ def detect():
 
     detections = []
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
+    speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
     
     # Process Results
     for r in results:
@@ -65,7 +68,7 @@ def detect():
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             bbox = [round(x1, 1), round(y1, 1), round(x2 - x1, 1), round(y2 - y1, 1)]
 
-            # Map to your categories for the Flutter app
+            # Map to your categories
             if "person" in ll: counts["person"] += 1
             if "knife" in ll: counts["knife"] += 1
             if "weapon" in ll or "gun" in ll: counts["weapon"] += 1
@@ -105,6 +108,6 @@ def detect():
     return jsonify(payload)
 
 if __name__ == "__main__":
-    # Railway uses the PORT environment variable, defaults to 5000
+    # Use Railway's dynamic port
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, debug=False, host="0.0.0.0", port=port)
