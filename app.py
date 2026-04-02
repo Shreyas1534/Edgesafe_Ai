@@ -1,5 +1,5 @@
 from gevent import monkey
-monkey.patch_all()  # 🔥 CRITICAL: Replaced eventlet with gevent for Python 3.13 stability
+monkey.patch_all()  # 🔥 Must stay at the very top
 
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
@@ -10,13 +10,16 @@ import numpy as np
 import os
 
 app = Flask(__name__)
-CORS(app)
 
-# Use 'gevent' as the async_mode for production
+# ✅ FIX: Explicitly allow the dashboard to send images to this backend
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Use 'gevent' for WebSocket production support
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# Load model once globally
+# ✅ FIX: Load your custom model and force it to CPU to save RAM
 model = YOLO("webapp.pt")
+model.to('cpu')
 
 @app.route("/")
 def index():
@@ -24,6 +27,9 @@ def index():
 
 @app.route("/detect", methods=["POST"])
 def detect():
+    # ✅ LOGGING: This will show up in your Railway 'View Logs' tab
+    print(">>> Image received for detection...")
+
     if 'image' not in request.files:
         return jsonify({"error": "No image provided"}), 400
         
@@ -36,11 +42,12 @@ def detect():
     if img is None:
         return jsonify({"error": "Invalid image"}), 400
 
+    # ✅ FIX: imgsz=320 reduces RAM usage by 4x compared to 640
     results = model(
         img,
         conf=0.20,
         iou=0.45,
-        imgsz=640,
+        imgsz=320,  
         verbose=False
     )
 
@@ -102,5 +109,6 @@ def detect():
     return jsonify(payload)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    # Railway will use Port 8080 or 5000 based on your Variables
+    port = int(os.environ.get("PORT", 8080))
     socketio.run(app, debug=False, host="0.0.0.0", port=port)
