@@ -8,6 +8,7 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import os
+import base64  # 🔥 NEW: Imported to encode the image for Flutter
 
 app = Flask(__name__)
 
@@ -66,6 +67,13 @@ def detect():
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
     speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
     
+    # 🔥 NEW: Let YOLO draw the bounding boxes on the image automatically
+    annotated_frame = results[0].plot()
+    
+    # 🔥 NEW: Compress the image heavily (quality=60) so it doesn't crash the WebSocket, then encode to Base64
+    _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+    frame_base64 = base64.b64encode(buffer).decode('utf-8')
+
     for r in results:
         speed = {
             "preprocess": round(r.speed.get("preprocess", 0), 1),
@@ -111,7 +119,8 @@ def detect():
             "fire": counts["fire"]
         },
         "speed": speed,
-        "total_objects": len(detections)
+        "total_objects": len(detections),
+        "frame": frame_base64  # 🔥 NEW: Send the image bytes to Flutter!
     }
     
     # Broadcast to all connected Flutter apps
