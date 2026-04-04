@@ -67,10 +67,10 @@ def detect():
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
     speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
     
-    # 🔥 NEW: Let YOLO draw the bounding boxes on the image automatically
+    # 🔥 Let YOLO draw the bounding boxes on the image automatically
     annotated_frame = results[0].plot()
     
-    # 🔥 NEW: Compress the image heavily (quality=60) so it doesn't crash the WebSocket, then encode to Base64
+    # 🔥 Compress the image heavily (quality=60) so it doesn't crash the WebSocket, then encode to Base64
     _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
     frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
@@ -120,11 +120,11 @@ def detect():
         },
         "speed": speed,
         "total_objects": len(detections),
-        "frame": frame_base64  # 🔥 NEW: Send the image bytes to Flutter!
+        "frame": frame_base64  # 🔥 Send the image bytes to Flutter!
     }
     
-    # Broadcast to all connected Flutter apps
-    socketio.emit('live_detections', payload)
+    # 🔥 FIX: Broadcast to ALL connected clients (laptop AND phone)
+    socketio.emit('live_detections', payload, broadcast=True)
 
     return jsonify(payload)
 
