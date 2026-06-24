@@ -1,0 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+ultralytics
+flask
+flask-cors
+flask-socketio
+opencv-python-headless
+numpy
+gunicorn
+gevent
+gevent-websocket
