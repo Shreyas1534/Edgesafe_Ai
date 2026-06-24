@@ -846,8 +846,8 @@ setTimeout(() => {
 }, 3600);
 
 // ── Config ──────────────────────────────────────────────────
-// 🔥 FIX: Absolute URL explicitly tells the browser where the backend lives on the internet
-const BACKEND_URL  = 'https://edgesafeai-production.up.railway.app/detect';
+// 🔥 FIX: Relative URL explicitly tells the browser to use the exact same server the page is loaded on
+const BACKEND_URL  = '/detect';
 const INTERVAL_MS  = 3000;
 const CANVAS_W     = 640;
 const CANVAS_H     = 480;
