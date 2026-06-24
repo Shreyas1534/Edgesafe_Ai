@@ -1,14 +1,20 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
+from flask_socketio import SocketIO
 from ultralytics import YOLO
 import cv2
 import numpy as np
 import os
+import base64
 
 app = Flask(__name__)
 
 # Explicitly allow the dashboard/mobile app to send images to this backend
 CORS(app)
+
+# Initialize SocketIO for real-time Flutter app communication
+# Using 'gevent' as specified in your requirements.txt
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # Load the model
 model = YOLO("webapp.pt")
@@ -36,8 +42,7 @@ def detect():
     if img is None:
         return jsonify({"error": "Invalid image"}), 400
 
-    # 🔥 OPTIMIZATIONS APPLIED 🔥
-    # imgsz reduced to 480 (from 640) for significantly faster CPU inference
+    # Fast CPU Inference
     results = model(
         img,
         conf=0.45,
@@ -50,8 +55,12 @@ def detect():
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
     speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
 
-    # Removed the annotated_frame generation and base64 encoding. 
-    # Your frontend already draws the boxes using coordinates. This saves massive overhead.
+    # 🔥 GENERATE THE ANNOTATED IMAGE FOR THE MOBILE APP 🔥
+    annotated_frame = results[0].plot()
+    
+    # Compress the image heavily to save bandwidth, then encode to Base64
+    _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+    frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
     for r in results:
         speed = {
@@ -67,7 +76,6 @@ def detect():
             ll = cls_name.lower()
 
             x1, y1, x2, y2 = box.xyxy[0].tolist()
-            # Calculate coordinates based on the original 640x480 canvas size from frontend
             bbox = [round(x1, 1), round(y1, 1), round(x2 - x1, 1), round(y2 - y1, 1)]
 
             if "person" in ll: counts["person"] += 1
@@ -88,6 +96,7 @@ def detect():
     else:
         threat = "CLEAR"
 
+    # Full payload including the base64 image
     payload = {
         "detections": detections,
         "summary": ", ".join([f"{v} {k}" for k, v in counts.items() if v > 0]) or "no detections",
@@ -100,11 +109,19 @@ def detect():
         },
         "speed": speed,
         "total_objects": len(detections),
-        "frame": ""  # Left empty to prevent UI crashes if mobile app still expects the key
+        "frame": frame_base64  # Added back for the mobile app
     }
+    
+    # 🔥 FLUTTER BROADCAST 🔥
+    # Push the data AND the image frame to the Flutter DashboardController instantly
+    try:
+        socketio.emit('live_detections', payload)
+    except Exception as e:
+        print(f"Socket emit failed: {e}")
     
     return jsonify(payload)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(debug=False, host="0.0.0.0", port=port)
+    # CRITICAL: Must use socketio.run instead of app.run
+    socketio.run(app, debug=False, host="0.0.0.0", port=port)
