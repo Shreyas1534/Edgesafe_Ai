@@ -10,3 +10,9 @@ aptPkgs = [
     "libxkbcommon0", 
     "libxxf86vm1"
 ]
+
+[phases.build]
+cmds = [
+    "pip uninstall -y opencv-python",
+    "pip install opencv-python-headless"
+]
