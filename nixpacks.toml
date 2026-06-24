@@ -4,15 +4,11 @@ aptPkgs = [
     "libglib2.0-0", 
     "libsm6", 
     "libxrender1", 
-    "libxext6", 
-    "libxcb1", 
-    "libx11-6", 
-    "libxkbcommon0", 
-    "libxxf86vm1"
+    "libxext6"
 ]
 
 [phases.build]
 cmds = [
-    "pip uninstall -y opencv-python",
-    "pip install opencv-python-headless"
+    "/app/.venv/bin/pip uninstall -y opencv-python",
+    "/app/.venv/bin/pip install opencv-python-headless --force-reinstall"
 ]
