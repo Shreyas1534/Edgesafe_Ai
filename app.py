@@ -1,9 +1,5 @@
-from gevent import monkey
-monkey.patch_all()  # 🔥 Must stay at the very top
-
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from flask_socketio import SocketIO
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -13,16 +9,7 @@ import base64
 app = Flask(__name__)
 
 # Explicitly allow the dashboard/mobile app to send images to this backend
-CORS(app, resources={
-    r"/*": {
-        "origins": "*",
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Origin"]
-    }
-})
-
-# Use 'gevent' for WebSocket production support
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+CORS(app)
 
 # Load the model
 model = YOLO("webapp.pt")
@@ -66,7 +53,7 @@ def detect():
     # Let YOLO draw the bounding boxes on the image automatically
     annotated_frame = results[0].plot()
     
-    # Compress the image heavily so it doesn't crash the WebSocket, then encode to Base64
+    # Compress the image heavily so it doesn't crash, then encode to Base64
     _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
     frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
@@ -119,11 +106,8 @@ def detect():
         "frame": frame_base64  # Send the image bytes to the mobile UI
     }
     
-    # Broadcast to ALL connected clients
-    socketio.emit('live_detections', payload, broadcast=True)
-
     return jsonify(payload)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    socketio.run(app, debug=False, host="0.0.0.0", port=port)
+    app.run(debug=False, host="0.0.0.0", port=port)
