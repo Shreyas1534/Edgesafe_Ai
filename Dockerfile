@@ -23,5 +23,8 @@ RUN pip uninstall -y opencv-python && \
 # 7. Copy the rest of your application code
 COPY . .
 
-# 8. Start Gunicorn with threaded workers to prevent YOLO from blocking the server
-CMD sh -c "gunicorn -w 1 -k gthread --threads 4 -b 0.0.0.0:${PORT:-8080} app:app"
+# 8. CRITICAL: Prevent PyTorch from spawning too many threads and causing a SIGSEGV
+ENV OMP_NUM_THREADS=1
+
+# 9. Run the native Flask server directly (bypassing Gunicorn completely)
+CMD ["python", "app.py"]
