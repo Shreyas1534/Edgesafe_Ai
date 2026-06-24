@@ -712,7 +712,7 @@
       <canvas id="overlay-canvas"></canvas>
 
       <div class="overlay-info">
-        <span class="overlay-badge" id="fpsTag">FPS: --</span>
+        <span class="overlay-badge" id="fpsTag">PING: --</span>
         <span class="overlay-badge" id="resTag">RES: --</span>
       </div>
     </div>
@@ -733,7 +733,7 @@
       </div>
       <div class="metric-row">
         <span class="metric-label">INTERVAL</span>
-        <span class="metric-value" id="intervalVal">3.0 s</span>
+        <span class="metric-value" id="intervalVal">0.8 s</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">FRAMES SENT</span>
@@ -750,17 +750,6 @@
       <div class="metric-row">
         <span class="metric-label">THREAT LEVEL</span>
         <span class="metric-value safe" id="threatLevel">CLEAR</span>
-      </div>
-
-      <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between;">
-        <div class="timer-ring">
-          <svg class="ring-svg" width="28" height="28" viewBox="0 0 28 28">
-            <circle class="ring-bg" cx="14" cy="14" r="12"/>
-            <circle class="ring-fill" id="ringFill" cx="14" cy="14" r="12"/>
-          </svg>
-          <span>NEXT FRAME</span>
-        </div>
-        <span class="metric-value" id="countdownDisplay">—</span>
       </div>
     </div>
 
@@ -840,25 +829,20 @@ const splashMsgInterval = setInterval(() => {
   }
 }, 600);
 
-// Dismiss splash after animation completes (~3.6s)
 setTimeout(() => {
   document.getElementById('splash').classList.add('hidden');
 }, 3600);
 
 // ── Config ──────────────────────────────────────────────────
-// 🔥 FIX: Relative URL explicitly tells the browser to use the exact same server the page is loaded on
 const BACKEND_URL  = '/detect';
-const INTERVAL_MS  = 3000;
+const INTERVAL_MS  = 800;  // 🔥 REPLACED: Down from 3000ms for near real-time feel
 const CANVAS_W     = 640;
 const CANVAS_H     = 480;
 
 // ── State ────────────────────────────────────────────────────
 let stream        = null;
-let sendInterval  = null;
+let isDetecting   = false;
 let framesSent    = 0;
-let countdownTick = null;
-let countdownLeft = INTERVAL_MS / 1000;
-const CIRCUMFERENCE = 2 * Math.PI * 12;
 
 // ── DOM refs ─────────────────────────────────────────────────
 const video       = document.getElementById('video');
@@ -869,7 +853,6 @@ const octx        = overlayC.getContext('2d');
 const placeholder = document.getElementById('placeholder');
 const startBtn    = document.getElementById('startBtn');
 const stopBtn     = document.getElementById('stopBtn');
-const ringFill    = document.getElementById('ringFill');
 
 canvas.width  = CANVAS_W;
 canvas.height = CANVAS_H;
@@ -902,22 +885,6 @@ function setThreat(level) {
   el.className   = `metric-value ${map[level] || 'safe'}`;
 }
 
-function updateRing(offset) {
-  ringFill.style.strokeDashoffset = offset;
-}
-
-function startCountdown() {
-  countdownLeft = INTERVAL_MS / 1000;
-  if (countdownTick) clearInterval(countdownTick);
-  countdownTick = setInterval(() => {
-    countdownLeft = Math.max(0, countdownLeft - 0.1);
-    document.getElementById('countdownDisplay').textContent = countdownLeft.toFixed(1) + 's';
-    const progress = 1 - (countdownLeft / (INTERVAL_MS / 1000));
-    updateRing(CIRCUMFERENCE * (1 - progress));
-    if (countdownLeft <= 0) { countdownLeft = INTERVAL_MS / 1000; }
-  }, 100);
-}
-
 // ── Inference speed display ──────────────────────────────────
 function showSpeed(pre, inf, post) {
   const total = pre + inf + post;
@@ -925,24 +892,22 @@ function showSpeed(pre, inf, post) {
   document.getElementById('speedInf').textContent  = inf.toFixed(1)  + ' ms';
   document.getElementById('speedPost').textContent = post.toFixed(1) + ' ms';
   document.getElementById('speedTotal').textContent = total.toFixed(1) + ' ms';
-  // Bars: cap at 300ms = 100%
+  
   const cap = 300;
   document.getElementById('speedPreBar').style.width  = Math.min(100, pre  / cap * 100) + '%';
   document.getElementById('speedInfBar').style.width  = Math.min(100, inf  / cap * 100) + '%';
   document.getElementById('speedPostBar').style.width = Math.min(100, post / cap * 100) + '%';
 }
 
-// ── Class metadata ───────────────────────────────────────────
 function classInfo(label) {
   const ll = label.toLowerCase();
-  if (ll.includes('knife'))                             return { cls:'knife',  icon:'🔪', color:'#ff3d57' };
-  if (ll.includes('weapon') || ll.includes('gun'))     return { cls:'knife',  icon:'🔫', color:'#ff8c00' };
-  if (ll.includes('fire')   || ll.includes('flame'))   return { cls:'fire',   icon:'🔥', color:'#ff4500' };
+  if (ll.includes('knife'))                        return { cls:'knife',  icon:'🔪', color:'#ff3d57' };
+  if (ll.includes('weapon') || ll.includes('gun')) return { cls:'knife',  icon:'🔫', color:'#ff8c00' };
+  if (ll.includes('fire')   || ll.includes('flame')) return { cls:'fire',   icon:'🔥', color:'#ff4500' };
   if (ll.includes('person') || ll.includes('people'))  return { cls:'person', icon:'👤', color:'#00e5ff' };
   return { cls:'person', icon:'◈', color:'#00e5ff' };
 }
 
-// ── Detection cards panel ────────────────────────────────────
 function renderDetectionCards(detections) {
   const container = document.getElementById('detectionCards');
   container.innerHTML = '';
@@ -976,13 +941,8 @@ function renderDetectionCards(detections) {
   });
 }
 
-// ── Update 4-class stat strip ────────────────────────────────
 function updateStatStrip(cc) {
-  const p = cc.persons || 0;
-  const k = cc.knives  || 0;
-  const w = cc.weapons || 0;
-  const f = cc.fire    || 0;
-
+  const p = cc.persons || 0, k = cc.knives  || 0, w = cc.weapons || 0, f = cc.fire    || 0;
   document.getElementById('countPersons').textContent = p;
   document.getElementById('countKnives').textContent  = k;
   document.getElementById('countWeapons').textContent = w;
@@ -994,7 +954,6 @@ function updateStatStrip(cc) {
   document.getElementById('statFire').classList.toggle('active',   f > 0);
 }
 
-// ── Draw bounding boxes ──────────────────────────────────────
 function drawDetections(detections) {
   const w = overlayC.width, h = overlayC.height;
   octx.clearRect(0, 0, w, h);
@@ -1027,15 +986,10 @@ function drawDetections(detections) {
   });
 }
 
-// ── Process backend JSON response ────────────────────────────
 function processResponse(data, ping) {
   document.getElementById('lastPing').textContent = ping + ' ms';
 
-  // ── Detections array ──
-  // Backend sends: { detections:[{label,confidence,bbox:[x,y,w,h]},...], speed:{...}, summary, threat_level }
   const detections = data.detections || data.results || [];
-
-  // If backend returned old plain-list format [{class,confidence,bbox},...] handle gracefully
   const normalized = detections.map(d => ({
     label:      d.label || d.class_name || String(d.class ?? 'Object'),
     confidence: d.confidence || d.score  || 0,
@@ -1045,43 +999,20 @@ function processResponse(data, ping) {
   drawDetections(normalized);
   renderDetectionCards(normalized);
 
-  // ── Class counts → stat strip ──
-  if (data.class_counts) {
-    updateStatStrip(data.class_counts);
-  } else {
-    // Derive from detections if backend didn't send class_counts
-    const cc = { persons:0, knives:0, weapons:0, fire:0 };
-    normalized.forEach(d => {
-      const ll = d.label.toLowerCase();
-      if (ll.includes('person') || ll.includes('people')) cc.persons++;
-      if (ll.includes('knife'))                           cc.knives++;
-      if (ll.includes('weapon') || ll.includes('gun'))   cc.weapons++;
-      if (ll.includes('fire')   || ll.includes('flame')) cc.fire++;
-    });
-    updateStatStrip(cc);
-  }
+  if (data.class_counts) updateStatStrip(data.class_counts);
 
-  // ── Total object count ──
   const total = data.total_objects ?? normalized.length;
   document.getElementById('totalObjects').textContent = total;
 
-  // ── Inference speed ──
   if (data.speed) {
-    showSpeed(
-      data.speed.preprocess  || data.speed.pre  || 0,
-      data.speed.inference   || data.speed.inf  || 0,
-      data.speed.postprocess || data.speed.post || 0
-    );
+    showSpeed(data.speed.preprocess || 0, data.speed.inference || 0, data.speed.postprocess || 0);
   }
 
-  // ── Threat level ──
   const hasKnife  = normalized.some(d => d.label.toLowerCase().includes('knife') || d.label.toLowerCase().includes('weapon') || d.label.toLowerCase().includes('gun'));
   const hasPerson = normalized.some(d => d.label.toLowerCase().includes('person'));
   const threat    = data.threat_level || (hasKnife ? 'DANGER' : hasPerson ? 'WARNING' : 'CLEAR');
   setThreat(threat);
 
-  // ── Terminal-style summary log line ──
-  // Mirrors exactly what YOLO prints: "0: 480x640 1 Knife, 2 persons, 103.7ms"
   const summary  = data.summary || (normalized.length === 0 ? 'no detections' : normalized.map(d => d.label).join(', '));
   const infMs    = data.speed ? data.speed.inference.toFixed(1) + 'ms' : '';
   const termLine = `0: 480×640 ${summary}${infMs ? ', ' + infMs : ''}`;
@@ -1089,36 +1020,21 @@ function processResponse(data, ping) {
 
   addLog(termLine, logType);
 
-  // ── Per-detection breakdown ──
-  normalized.forEach(d => {
-    const conf    = (d.confidence * 100).toFixed(1);
-    const isKnife = d.label.toLowerCase().includes('knife') || d.label.toLowerCase().includes('weapon');
-    addLog(`  └─ ${d.label}  conf: ${conf}%`, isKnife ? 'danger' : 'info');
-  });
-
-  // ── Speed log line ──
-  if (data.speed) {
-    const s = data.speed;
-    addLog(`  ⚡ pre:${s.preprocess}ms  inf:${s.inference}ms  post:${s.postprocess}ms`, 'info');
-  }
-
-  // ── Status ──
   document.getElementById('pipelineStatus').textContent = 'ONLINE';
   document.getElementById('pipelineStatus').className   = 'metric-value safe';
   setStatus('LIVE · DETECTING', true);
   document.getElementById('fpsTag').textContent = `PING: ${ping}ms`;
 }
 
-// ── Frame sender ─────────────────────────────────────────────
-async function sendFrame() {
-  if (!stream) return;
+// 🔥 OPTIMIZED LOOP ALGORITHM: Only request next frame after server finishes handling the current one.
+async function detectionLoop() {
+  if (!stream || !isDetecting) return;
 
   ctx.drawImage(video, 0, 0, CANVAS_W, CANVAS_H);
 
   canvas.toBlob(async (blob) => {
     framesSent++;
     document.getElementById('frameCount').textContent = framesSent;
-    startCountdown();
 
     const form = new FormData();
     form.append('image', blob, 'frame.jpg');
@@ -1129,20 +1045,25 @@ async function sendFrame() {
       const ping = Date.now() - t0;
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
+      
       processResponse(data, ping);
+      
+      // Delay slightly before next frame to save Railway CPU, but keep it feeling snappy
+      if (isDetecting) setTimeout(detectionLoop, INTERVAL_MS);
 
     } catch (err) {
       addLog(`[FRAME #${framesSent}] Send error: ${err.message}`, 'danger');
       document.getElementById('pipelineStatus').textContent = 'ERROR';
       document.getElementById('pipelineStatus').className   = 'metric-value danger';
       setStatus('BACKEND UNREACHABLE');
+      
+      // If network fails, wait 3 seconds before trying again to prevent infinite error loops
+      if (isDetecting) setTimeout(detectionLoop, 3000);
     }
   }, 'image/jpeg', 0.85);
 }
 
-// ── Camera start / stop ──────────────────────────────────────
 async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -1161,15 +1082,16 @@ async function startCamera() {
     placeholder.style.display = 'none';
     startBtn.disabled = true;
     stopBtn.disabled  = false;
+    isDetecting = true;
 
     document.getElementById('resTag').textContent       = `RES: ${CANVAS_W}×${CANVAS_H}`;
     document.getElementById('intervalVal').textContent  = (INTERVAL_MS / 1000).toFixed(1) + ' s';
 
     setStatus('LIVE · ARMED', true);
-    addLog('Camera started. Sending frames every 3s to backend pipeline.', 'safe');
+    addLog('Camera started. Pipeline active.', 'safe');
 
-    sendFrame();
-    sendInterval = setInterval(sendFrame, INTERVAL_MS);
+    // Kickstart recursive detection loop
+    detectionLoop();
 
   } catch (err) {
     addLog(`Camera error: ${err.message}`, 'danger');
@@ -1178,9 +1100,8 @@ async function startCamera() {
 }
 
 function stopCamera() {
-  if (stream)        { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  if (sendInterval)  { clearInterval(sendInterval);  sendInterval  = null; }
-  if (countdownTick) { clearInterval(countdownTick); countdownTick = null; }
+  isDetecting = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
 
   video.srcObject = null;
   octx.clearRect(0, 0, overlayC.width, overlayC.height);
@@ -1189,15 +1110,14 @@ function stopCamera() {
   stopBtn.disabled  = true;
 
   updateStatStrip({ persons:0, knives:0, weapons:0, fire:0 });
-  document.getElementById('fpsTag').textContent         = 'FPS: --';
+  document.getElementById('fpsTag').textContent         = 'PING: --';
   document.getElementById('resTag').textContent         = 'RES: --';
   document.getElementById('totalObjects').textContent   = '0';
   document.getElementById('pipelineStatus').textContent = 'OFFLINE';
   document.getElementById('pipelineStatus').className   = 'metric-value';
-  document.getElementById('countdownDisplay').textContent = '—';
   document.getElementById('detectionCards').innerHTML   =
     '<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--text-dim);">No detections yet.</div>';
-  updateRing(CIRCUMFERENCE);
+    
   setStatus('STANDBY');
   addLog('Camera stopped.', 'info');
 }

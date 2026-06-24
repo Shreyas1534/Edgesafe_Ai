@@ -4,7 +4,6 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import os
-import base64
 
 app = Flask(__name__)
 
@@ -37,25 +36,22 @@ def detect():
     if img is None:
         return jsonify({"error": "Invalid image"}), 400
 
-    # 🔥 CRITICAL ACCURACY CHANGES HERE 🔥
+    # 🔥 OPTIMIZATIONS APPLIED 🔥
+    # imgsz reduced to 480 (from 640) for significantly faster CPU inference
     results = model(
         img,
-        conf=0.45,  # Increased: Filters out low-confidence background noise and false alarms
-        iou=0.50,   # Increased: Prevents the model from drawing overlapping boxes on the same object
-        imgsz=640,  # Increased: Crucial for the model to "see" smaller objects like knives
+        conf=0.45,
+        iou=0.50,
+        imgsz=480, 
         verbose=False
     )
 
     detections = []
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
     speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
-    
-    # Let YOLO draw the bounding boxes on the image automatically
-    annotated_frame = results[0].plot()
-    
-    # Compress the image heavily so it doesn't crash, then encode to Base64
-    _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
-    frame_base64 = base64.b64encode(buffer).decode('utf-8')
+
+    # Removed the annotated_frame generation and base64 encoding. 
+    # Your frontend already draws the boxes using coordinates. This saves massive overhead.
 
     for r in results:
         speed = {
@@ -71,6 +67,7 @@ def detect():
             ll = cls_name.lower()
 
             x1, y1, x2, y2 = box.xyxy[0].tolist()
+            # Calculate coordinates based on the original 640x480 canvas size from frontend
             bbox = [round(x1, 1), round(y1, 1), round(x2 - x1, 1), round(y2 - y1, 1)]
 
             if "person" in ll: counts["person"] += 1
@@ -103,7 +100,7 @@ def detect():
         },
         "speed": speed,
         "total_objects": len(detections),
-        "frame": frame_base64  # Send the image bytes to the mobile UI
+        "frame": ""  # Left empty to prevent UI crashes if mobile app still expects the key
     }
     
     return jsonify(payload)
