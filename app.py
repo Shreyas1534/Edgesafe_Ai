@@ -1,3 +1,14 @@
+# ─────────────────────────────────────────────────────────────
+# CRITICAL: gevent monkey-patching MUST happen before any other
+# imports. Without this, Flask-SocketIO's gevent async_mode can't
+# cooperatively multiplex the WebSocket handshake/ping-pong with
+# incoming /detect requests — under load the socket connection
+# from the Flutter app stalls or times out even though the plain
+# HTTP /detect endpoint keeps responding.
+# ─────────────────────────────────────────────────────────────
+import gevent.monkey
+gevent.monkey.patch_all()
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -6,33 +17,40 @@ import cv2
 import numpy as np
 import os
 import base64
+import threading
 
 app = Flask(__name__)
-
-# Explicitly allow the dashboard/mobile app to send images to this backend
 CORS(app)
 
-# Initialize SocketIO for real-time Flutter app communication
-# Using 'gevent' as specified in your requirements.txt
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode='gevent',
+    ping_timeout=60,     # tolerate brief stalls instead of dropping the connection
+    ping_interval=25,
+)
 
-# Load the model
 model = YOLO("webapp.pt")
 model.to('cpu')
+
+# Serialize inference - Ultralytics model objects aren't guaranteed
+# thread/greenlet safe for concurrent forward passes.
+inference_lock = threading.Lock()
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 @app.route("/detect", methods=["POST", "OPTIONS"])
 def detect():
-    # Handle the CORS pre-flight check automatically
     if request.method == "OPTIONS":
         return jsonify({"status": "CORS OK"}), 200
 
     if 'image' not in request.files:
         return jsonify({"error": "No image provided"}), 400
-        
+
     file = request.files["image"]
     img_bytes = file.read()
 
@@ -42,25 +60,23 @@ def detect():
     if img is None:
         return jsonify({"error": "Invalid image"}), 400
 
-    # Fast CPU Inference
-    results = model(
-        img,
-        conf=0.45,
-        iou=0.50,
-        imgsz=480, 
-        verbose=False
-    )
+    with inference_lock:
+        results = model(
+            img,
+            conf=0.45,
+            iou=0.50,
+            imgsz=480,
+            verbose=False
+        )
+        annotated_frame = results[0].plot()
+
+    # Compress heavily to save bandwidth, then encode to Base64
+    _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+    frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
     detections = []
     counts = {"person": 0, "knife": 0, "weapon": 0, "fire": 0}
     speed = {"preprocess": 0, "inference": 0, "postprocess": 0}
-
-    # 🔥 GENERATE THE ANNOTATED IMAGE FOR THE MOBILE APP 🔥
-    annotated_frame = results[0].plot()
-    
-    # Compress the image heavily to save bandwidth, then encode to Base64
-    _, buffer = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
-    frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
     for r in results:
         speed = {
@@ -96,7 +112,6 @@ def detect():
     else:
         threat = "CLEAR"
 
-    # Full payload including the base64 image
     payload = {
         "detections": detections,
         "summary": ", ".join([f"{v} {k}" for k, v in counts.items() if v > 0]) or "no detections",
@@ -109,19 +124,18 @@ def detect():
         },
         "speed": speed,
         "total_objects": len(detections),
-        "frame": frame_base64  # Added back for the mobile app
+        "frame": frame_base64
     }
-    
+
     # 🔥 FLUTTER BROADCAST 🔥
-    # Push the data AND the image frame to the Flutter DashboardController instantly
     try:
         socketio.emit('live_detections', payload)
     except Exception as e:
         print(f"Socket emit failed: {e}")
-    
+
     return jsonify(payload)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    # CRITICAL: Must use socketio.run instead of app.run
     socketio.run(app, debug=False, host="0.0.0.0", port=port)
